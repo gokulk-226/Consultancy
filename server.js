@@ -51,11 +51,9 @@ app.post('/api/products/add', async (req, res) => {
         const { productName, manufacturer, quantity, date, amount } = req.body;
         const totalAmount = quantity * amount;
         
-        // Always create a new stock entry
         const newProduct = new Product({ productName, manufacturer, quantity, date, amount, totalAmount });
         await newProduct.save();
         
-        // Store purchase details separately
         const newPurchase = new Purchase({ productName, manufacturer, quantity, date, amount, totalAmount });
         await newPurchase.save();
 
@@ -163,7 +161,21 @@ app.get('/api/bills', async (req, res) => {
 // 🟢 Get Low Stock Products (<100)
 app.get('/api/products/low-stock', async (req, res) => {
     try {
-        const lowStockProducts = await Product.find({ quantity: { $lt: 100 } });
+        const products = await Product.find();
+        const productMap = new Map();
+
+        products.forEach(({ productName, quantity }) => {
+            if (productMap.has(productName)) {
+                productMap.set(productName, productMap.get(productName) + quantity);
+            } else {
+                productMap.set(productName, quantity);
+            }
+        });
+
+        const lowStockProducts = Array.from(productMap)
+            .filter(([_, totalQuantity]) => totalQuantity < 100)
+            .map(([productName, totalQuantity]) => ({ productName, quantity: totalQuantity }));
+
         res.json(lowStockProducts);
     } catch (error) {
         console.error("❌ Error Fetching Low Stock Data:", error);
