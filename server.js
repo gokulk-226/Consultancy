@@ -6,21 +6,27 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect('mongodb://localhost:27017/inventoryDB', { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log("✅ MongoDB Connected"))
-    .catch(err => console.error("❌ MongoDB Connection Error:", err));
+mongoose.connect('mongodb://localhost:27017/inventoryDB', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
+// Product Schema
 const ProductSchema = new mongoose.Schema({
     productName: String,
     manufacturer: String,
     quantity: Number,
-    date: String,
-    amount: Number
+    date: { type: Date, default: Date.now },
+    amount: Number,
+    totalAmount: Number
 });
 const Product = mongoose.model('Product', ProductSchema);
 
+// Bill Schema
 const BillSchema = new mongoose.Schema({
     productName: String,
+    manufacturer: String,
     quantity: Number,
     amount: Number,
     totalAmount: Number,
@@ -28,22 +34,34 @@ const BillSchema = new mongoose.Schema({
 });
 const Bill = mongoose.model('Bill', BillSchema);
 
-// 🟢 Add or Update Stock
+// Purchase Schema
+const PurchaseSchema = new mongoose.Schema({
+    productName: String,
+    manufacturer: String,
+    quantity: Number,
+    date: { type: Date, default: Date.now },
+    amount: Number,
+    totalAmount: Number
+});
+const Purchase = mongoose.model('Purchase', PurchaseSchema);
+
+// 🟢 Add Stock (Always Creates a New Entry)
 app.post('/api/products/add', async (req, res) => {
     try {
         const { productName, manufacturer, quantity, date, amount } = req.body;
-        const existingProduct = await Product.findOne({ productName });
-
-        if (existingProduct) {
-            existingProduct.quantity += parseInt(quantity);
-            await existingProduct.save();
-        } else {
-            const newProduct = new Product({ productName, manufacturer, quantity, date, amount });
-            await newProduct.save();
-        }
+        const totalAmount = quantity * amount;
+        
+        // Always create a new stock entry
+        const newProduct = new Product({ productName, manufacturer, quantity, date, amount, totalAmount });
+        await newProduct.save();
+        
+        // Store purchase details separately
+        const newPurchase = new Purchase({ productName, manufacturer, quantity, date, amount, totalAmount });
+        await newPurchase.save();
 
         res.status(201).json({ message: "✅ Stock Added Successfully!" });
     } catch (error) {
+        console.error("❌ Error Adding Stock:", error);
         res.status(500).json({ error: "❌ Error Adding Stock" });
     }
 });
@@ -54,18 +72,31 @@ app.get('/api/products', async (req, res) => {
         const products = await Product.find().sort({ date: -1 });
         res.json(products);
     } catch (error) {
+        console.error("❌ Error Fetching Products:", error);
         res.status(500).json({ error: "❌ Error Fetching Products" });
     }
 });
 
-// 🟢 Update Product (Fixed Route)
+// 🟢 Get All Purchases
+app.get('/api/purchases', async (req, res) => {
+    try {
+        const purchases = await Purchase.find().sort({ date: -1 });
+        res.json(purchases);
+    } catch (error) {
+        console.error("❌ Error Fetching Purchases:", error);
+        res.status(500).json({ error: "❌ Error Fetching Purchases" });
+    }
+});
+
+// 🟢 Update Product
 app.put('/api/products/edit/:id', async (req, res) => {
     try {
         const { productName, manufacturer, quantity, date, amount } = req.body;
+        const totalAmount = quantity * amount;
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
-            { productName, manufacturer, quantity, date, amount },
-            { new: true } // Ensures the updated product is returned
+            { productName, manufacturer, quantity, date, amount, totalAmount },
+            { new: true }
         );
 
         if (!updatedProduct) {
@@ -74,6 +105,7 @@ app.put('/api/products/edit/:id', async (req, res) => {
 
         res.json({ message: "✅ Product Updated Successfully!", product: updatedProduct });
     } catch (error) {
+        console.error("❌ Error Updating Product:", error);
         res.status(500).json({ error: "❌ Error Updating Product" });
     }
 });
@@ -81,9 +113,13 @@ app.put('/api/products/edit/:id', async (req, res) => {
 // 🟢 Delete Product
 app.delete('/api/products/delete/:id', async (req, res) => {
     try {
-        await Product.findByIdAndDelete(req.params.id);
+        const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+        if (!deletedProduct) {
+            return res.status(404).json({ error: "❌ Product Not Found" });
+        }
         res.json({ message: "✅ Product Deleted Successfully!" });
     } catch (error) {
+        console.error("❌ Error Deleting Product:", error);
         res.status(500).json({ error: "❌ Error Deleting Product" });
     }
 });
@@ -91,26 +127,24 @@ app.delete('/api/products/delete/:id', async (req, res) => {
 // 🟢 Generate Bill & Reduce Stock
 app.post('/api/bills/generate', async (req, res) => {
     try {
-        const { productName, quantity, amount } = req.body;
-        const product = await Product.findOne({ productName });
-
-        if (!product) {
-            return res.status(404).json({ error: "❌ Product Not Found" });
+        const { productName, manufacturer, quantity, amount } = req.body;
+        const totalAmount = quantity * amount;
+        
+        const product = await Product.findOne({ productName, manufacturer });
+        if (!product || product.quantity < quantity) {
+            return res.status(400).json({ error: "❌ Insufficient Stock or Product Not Found" });
         }
-
-        if (product.quantity < quantity) {
-            return res.status(400).json({ error: "❌ Insufficient Stock" });
-        }
-
+        
         product.quantity -= quantity;
+        product.totalAmount = product.quantity * product.amount;
         await product.save();
 
-        const totalAmount = quantity * amount;
-        const newBill = new Bill({ productName, quantity, amount, totalAmount });
+        const newBill = new Bill({ productName, manufacturer, quantity, amount, totalAmount });
         await newBill.save();
 
         res.json({ message: "✅ Bill Generated Successfully!" });
     } catch (error) {
+        console.error("❌ Error Generating Bill:", error);
         res.status(500).json({ error: "❌ Error Generating Bill" });
     }
 });
@@ -121,6 +155,7 @@ app.get('/api/bills', async (req, res) => {
         const bills = await Bill.find().sort({ date: -1 });
         res.json(bills);
     } catch (error) {
+        console.error("❌ Error Fetching Bills:", error);
         res.status(500).json({ error: "❌ Error Fetching Bills" });
     }
 });
@@ -131,6 +166,7 @@ app.get('/api/products/low-stock', async (req, res) => {
         const lowStockProducts = await Product.find({ quantity: { $lt: 100 } });
         res.json(lowStockProducts);
     } catch (error) {
+        console.error("❌ Error Fetching Low Stock Data:", error);
         res.status(500).json({ error: "❌ Error Fetching Low Stock Data" });
     }
 });

@@ -4,13 +4,14 @@ import './AddStock.css';
 
 function AddStock() {
     const [formData, setFormData] = useState({
-        productName: '', 
-        manufacturer: '', 
-        quantity: 0, 
-        date: '', 
-        amount: 0,
+        productName: '',
+        manufacturer: '',
+        quantity: '',
+        date: '',
+        amount: '',
         totalAmount: 0
     });
+
     const [products, setProducts] = useState([]);
     const [editingId, setEditingId] = useState(null);
 
@@ -18,19 +19,29 @@ function AddStock() {
         fetchProducts();
     }, []);
 
+    // Fetch products from the database
     const fetchProducts = async () => {
         try {
             const response = await axios.get('http://localhost:5000/api/products');
-            setProducts(response.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
+            setProducts(response.data.sort((a, b) => {
+                if (a.productName === b.productName) {
+                    return a.manufacturer.localeCompare(b.manufacturer);
+                }
+                return a.productName.localeCompare(b.productName);
+            }));
         } catch (error) {
             console.error("Error fetching products:", error);
         }
     };
 
+    // Handle input changes and calculate totalAmount
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => {
-            const updatedData = { ...prev, [name]: value };
+            const updatedData = {
+                ...prev,
+                [name]: name === "quantity" || name === "amount" ? Number(value) || 0 : value
+            };
             if (name === "quantity" || name === "amount") {
                 updatedData.totalAmount = updatedData.quantity * updatedData.amount;
             }
@@ -38,12 +49,13 @@ function AddStock() {
         });
     };
 
+    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const { productName, manufacturer, quantity, date, amount } = formData;
-            const requestData = { productName, manufacturer, quantity: Number(quantity), date, amount: Number(amount) };
-    
+            const { productName, manufacturer, quantity, date, amount, totalAmount } = formData;
+            const requestData = { productName, manufacturer, quantity, date, amount, totalAmount };
+
             if (editingId) {
                 await axios.put(`http://localhost:5000/api/products/edit/${editingId}`, requestData);
                 alert('Stock updated successfully!');
@@ -51,19 +63,26 @@ function AddStock() {
                 await axios.post('http://localhost:5000/api/products/add', requestData);
                 alert('Stock added successfully!');
             }
-    
+
             resetForm();
             fetchProducts();
         } catch (error) {
             console.error("Error adding/updating stock:", error);
         }
     };
-    
+
+    // Edit existing stock
     const handleEdit = (product) => {
-        setFormData({ ...product, totalAmount: product.quantity * product.amount });
+        setFormData({ 
+            ...product, 
+            quantity: product.quantity || 0, 
+            amount: product.amount || 0,
+            totalAmount: product.quantity * product.amount
+        });
         setEditingId(product._id);
     };
 
+    // Delete a product
     const handleDelete = async (id) => {
         if (window.confirm("Are you sure you want to delete this product?")) {
             try {
@@ -76,20 +95,29 @@ function AddStock() {
         }
     };
 
+    // Reset form fields
     const resetForm = () => {
-        setFormData({ productName: '', manufacturer: '', quantity: 0, date: '', amount: 0, totalAmount: 0 });
+        setFormData({ 
+            productName: '', 
+            manufacturer: '', 
+            quantity: '', 
+            date: '', 
+            amount: '', 
+            totalAmount: 0 
+        });
         setEditingId(null);
     };
 
     return (
         <div className="container">
             <h2>{editingId ? "Edit Stock" : "Add Stock"}</h2>
+
             <div className="form-container">
                 <form onSubmit={handleSubmit}>
-                    {['productName', 'manufacturer', 'quantity', 'date', 'amount'].map((field, index) => (
+                    {['productName', 'manufacturer', 'date'].map((field, index) => (
                         <input 
                             key={index} 
-                            type={field === 'date' ? 'date' : field === 'quantity' || field === 'amount' ? 'number' : 'text'}
+                            type={field === 'date' ? 'date' : 'text'}
                             name={field}
                             placeholder={field.replace(/([A-Z])/g, ' $1').trim()}
                             value={formData[field]}
@@ -97,16 +125,45 @@ function AddStock() {
                             required
                         />
                     ))}
-                    <input type="number" name="totalAmount" placeholder="Total Amount" value={formData.totalAmount} readOnly />
-                    <button type="submit">{editingId ? 'Update Stock' : 'Add Stock'}</button>
+                    <input 
+                        type="number" 
+                        name="quantity" 
+                        placeholder="Quantity" 
+                        value={formData.quantity} 
+                        onChange={handleChange} 
+                        min="0"
+                        required
+                    />
+                    <input 
+                        type="number" 
+                        name="amount" 
+                        placeholder="Amount (₹)" 
+                        value={formData.amount} 
+                        onChange={handleChange} 
+                        min="0"
+                        required
+                    />
+                    <input 
+                        type="text" 
+                        name="totalAmount" 
+                        placeholder="Total Amount (₹)" 
+                        value={`₹${formData.totalAmount}`} 
+                        readOnly 
+                        style={{ width: '120px' }}
+                    />
+
+                    <button type="submit" disabled={!formData.productName || !formData.manufacturer || !formData.date}>
+                        {editingId ? 'Update Stock' : 'Add Stock'}
+                    </button>
                 </form>
             </div>
+
             <div className="products-container">
-                <h3>Stored Products</h3>
+                <h3>Purchased Stocks</h3>
                 <table>
                     <thead>
                         <tr>
-                            {['Product Name', 'Manufacturer', 'Quantity', 'Date', 'Amount', 'Total Amount', 'Actions'].map((heading, index) => (
+                            {['Product Name', 'Manufacturer', 'Quantity', 'Date', 'Amount (₹)', 'Total Amount (₹)', 'Actions'].map((heading, index) => (
                                 <th key={index}>{heading}</th>
                             ))}
                         </tr>
@@ -115,13 +172,15 @@ function AddStock() {
                         {products.length > 0 ? (
                             products.map((product) => (
                                 <tr key={product._id}>
-                                    {['productName', 'manufacturer', 'quantity', 'date', 'amount'].map((field, index) => (
-                                        <td key={index}>{field === 'amount' ? `₹${product[field]}` : product[field]}</td>
-                                    ))}
-                                    <td>₹{product.quantity * product.amount}</td>
+                                    <td>{product.productName}</td>
+                                    <td>{product.manufacturer}</td>
+                                    <td>{product.quantity}</td>
+                                    <td>{new Date(product.date).toLocaleDateString()}</td>
+                                    <td>₹{product.amount}</td>
+                                    <td>₹{product.totalAmount}</td>
                                     <td>
-                                        <button onClick={() => handleEdit(product)}>Edit</button>
-                                        <button onClick={() => handleDelete(product._id)}>Delete</button>
+                                        <button onClick={() => handleEdit(product)}>✏️ Edit</button>
+                                        <button onClick={() => handleDelete(product._id)}>❌ Delete</button>
                                     </td>
                                 </tr>
                             ))

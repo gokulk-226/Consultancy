@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import './AddStock.css';
 
 function GenerateBill() {
     const [formData, setFormData] = useState({ productName: '', quantity: 0, amount: 0, totalAmount: 0 });
@@ -39,36 +40,36 @@ function GenerateBill() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
-            <h2 className="text-2xl font-bold mb-4 text-center">Generate Bill</h2>
+        <div className="products-container">
+            <h2>Generate Bill</h2>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <input type="text" name="productName" placeholder="Product Name" onChange={handleChange} required className="w-full p-2 border rounded-md" />
-                <input type="number" name="quantity" placeholder="Quantity" onChange={handleChange} required className="w-full p-2 border rounded-md" />
-                <input type="number" name="amount" placeholder="Amount (₹)" onChange={handleChange} required className="w-full p-2 border rounded-md" />
-                <input type="text" name="totalAmount" value={`Total Amount: ₹${formData.totalAmount}`} readOnly className="w-full p-2 border rounded-md bg-gray-100" />
-                <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">Generate Bill</button>
+            <form onSubmit={handleSubmit} className="form-container">
+                <input type="text" name="productName" placeholder="Product Name" onChange={handleChange} required />
+                <input type="number" name="quantity" placeholder="Quantity" onChange={handleChange} required />
+                <input type="number" name="amount" placeholder="Amount (₹)" onChange={handleChange} required />
+                <input type="text" name="totalAmount" value={`Total Amount: ₹${formData.totalAmount}`} readOnly className="readonly-input" />
+                <button type="submit" className="submit-btn">Generate Bill</button>
             </form>
 
-            <h3 className="text-xl font-semibold mt-6">All Bills</h3>
-            <table className="w-full mt-4 border-collapse border border-gray-300">
+            <h3>All Bills</h3>
+            <table>
                 <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border border-gray-300 p-2">Product Name</th>
-                        <th className="border border-gray-300 p-2">Quantity</th>
-                        <th className="border border-gray-300 p-2">Amount (₹)</th>
-                        <th className="border border-gray-300 p-2">Total Amount (₹)</th>
-                        <th className="border border-gray-300 p-2">Date</th>
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                        <th>Amount (₹)</th>
+                        <th className="total-amount-column">Total Amount (₹)</th>
+                        <th>Date</th>
                     </tr>
                 </thead>
                 <tbody>
                     {bills.map((bill) => (
-                        <tr key={bill._id} className="hover:bg-gray-100">
-                            <td className="border border-gray-300 p-2">{bill.productName}</td>
-                            <td className="border border-gray-300 p-2">{bill.quantity}</td>
-                            <td className="border border-gray-300 p-2">₹{bill.amount}</td>
-                            <td className="border border-gray-300 p-2">₹{bill.quantity * bill.amount}</td>
-                            <td className="border border-gray-300 p-2">{new Date(bill.date).toLocaleDateString()}</td>
+                        <tr key={bill._id}>
+                            <td>{bill.productName}</td>
+                            <td>{bill.quantity}</td>
+                            <td>₹{bill.amount}</td>
+                            <td className="total-amount-column">₹{bill.quantity * bill.amount}</td>
+                            <td>{new Date(bill.date).toLocaleDateString()}</td>
                         </tr>
                     ))}
                 </tbody>

@@ -6,41 +6,44 @@ function LowStock() {
 
     useEffect(() => {
         axios.get('http://localhost:5000/api/products/low-stock')
-            .then(response => setLowStockProducts(response.data))
+            .then(response => {
+                const filteredProducts = response.data.filter(product => product.quantity < 100);
+                setLowStockProducts(filteredProducts);
+            })
             .catch(error => console.error(error));
     }, []);
 
     return (
-        <div style={styles.container}>
+        <div className="low-stock-container">
             <h2>Low Stock Alert</h2>
             {lowStockProducts.length > 0 ? (
-                <table style={styles.table}>
-                    <thead>
-                        <tr>
-                            <th>Product Name</th>
-                            <th>Quantity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {lowStockProducts.map(product => (
-                            <tr key={product._id}>
-                                <td>{product.productName}</td>
-                                <td style={{ color: 'red' }}>{product.quantity}</td>
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Manufacturer</th>
+                                <th>Date</th>
+                                <th>Quantity</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {lowStockProducts.map(product => (
+                                <tr key={product._id}>
+                                    <td>{product.productName}</td>
+                                    <td>{product.manufacturer}</td>
+                                    <td>{new Date(product.date).toLocaleDateString()}</td>
+                                    <td className="low-stock-quantity">{product.quantity}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             ) : (
                 <p>No low-stock products!</p>
             )}
         </div>
     );
 }
-
-const styles = {
-    container: { textAlign: 'center', padding: '20px' },
-    table: { margin: 'auto', borderCollapse: 'collapse', width: '50%' },
-    td: { border: '1px solid black', padding: '10px' }
-};
 
 export default LowStock;
