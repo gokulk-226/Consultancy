@@ -43,8 +43,8 @@ function GenerateBill() {
             setFormData(prevState => ({
                 ...prevState,
                 productName: selectedProduct.productName,
-                manufacturer: selectedProduct.manufacturer, // Include manufacturer
-                amount: selectedProduct.amount, // Auto-fill price
+                manufacturer: selectedProduct.manufacturer,
+                amount: selectedProduct.amount,
                 totalAmount: prevState.quantity * selectedProduct.amount
             }));
         }
@@ -52,13 +52,17 @@ function GenerateBill() {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        const numericValue = name === "quantity" || name === "amount" ? Number(value) : value;
+        let numericValue = name === "quantity" ? value.replace(/^0+/, '') : value; // Remove leading zeros
+
+        if (name === "quantity" || name === "amount") {
+            numericValue = Number(numericValue) || ''; // Convert to number but keep empty string if invalid
+        }
 
         setFormData(prevState => {
             const updatedFormData = { ...prevState, [name]: numericValue };
 
             if (name === "quantity" || name === "amount") {
-                updatedFormData.totalAmount = updatedFormData.quantity * updatedFormData.amount;
+                updatedFormData.totalAmount = (updatedFormData.quantity || 0) * (updatedFormData.amount || 0);
             }
 
             return updatedFormData;
@@ -67,6 +71,11 @@ function GenerateBill() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!formData.productName) {
+            alert("❌ Please select a product.");
+            return;
+        }
 
         if (formData.quantity <= 0) {
             alert("❌ Quantity must be greater than zero.");
@@ -77,6 +86,15 @@ function GenerateBill() {
             const response = await axios.post('http://localhost:5000/api/bills/generate', formData);
             alert(response.data.message);
             fetchBills();
+
+            // Reset form fields
+            setFormData({
+                productName: '',
+                manufacturer: '',
+                quantity: '',
+                amount: 0,
+                totalAmount: 0
+            });
         } catch (error) {
             alert("❌ Error generating bill");
             console.error(error);
@@ -90,7 +108,7 @@ function GenerateBill() {
             <div className="form-container">
                 <form onSubmit={handleSubmit}>
                     {/* Product Selection Dropdown */}
-                    <select name="productName" onChange={handleProductSelect} required>
+                    <select name="productName" onChange={handleProductSelect} value={formData.productName} required>
                         <option value="">Select Product</option>
                         {products.map(product => (
                             <option key={product._id} value={product.productName}>
