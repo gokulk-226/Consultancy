@@ -5,7 +5,8 @@ import './AddStock.css';
 function GenerateBill() {
     const [formData, setFormData] = useState({
         productName: '',
-        quantity: 0,
+        manufacturer: '',
+        quantity: '',
         amount: 0,
         totalAmount: 0
     });
@@ -23,7 +24,7 @@ function GenerateBill() {
             const response = await axios.get('http://localhost:5000/api/bills');
             setBills(response.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
         } catch (error) {
-            console.error("Error fetching bills:", error);
+            console.error("❌ Error fetching bills:", error);
         }
     };
 
@@ -32,41 +33,53 @@ function GenerateBill() {
             const response = await axios.get('http://localhost:5000/api/products');
             setProducts(response.data);
         } catch (error) {
-            console.error("Error fetching products:", error);
+            console.error("❌ Error fetching products:", error);
         }
     };
 
     const handleProductSelect = (e) => {
         const selectedProduct = products.find(product => product.productName === e.target.value);
         if (selectedProduct) {
-            setFormData({
-                ...formData,
+            setFormData(prevState => ({
+                ...prevState,
                 productName: selectedProduct.productName,
+                manufacturer: selectedProduct.manufacturer, // Include manufacturer
                 amount: selectedProduct.amount, // Auto-fill price
-                totalAmount: formData.quantity * selectedProduct.amount
-            });
+                totalAmount: prevState.quantity * selectedProduct.amount
+            }));
         }
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        const updatedFormData = { ...formData, [name]: value };
+        const numericValue = name === "quantity" || name === "amount" ? Number(value) : value;
 
-        if (name === "quantity" || name === "amount") {
-            updatedFormData.totalAmount = updatedFormData.quantity * updatedFormData.amount;
-        }
+        setFormData(prevState => {
+            const updatedFormData = { ...prevState, [name]: numericValue };
 
-        setFormData(updatedFormData);
+            if (name === "quantity" || name === "amount") {
+                updatedFormData.totalAmount = updatedFormData.quantity * updatedFormData.amount;
+            }
+
+            return updatedFormData;
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (formData.quantity <= 0) {
+            alert("❌ Quantity must be greater than zero.");
+            return;
+        }
+
         try {
             const response = await axios.post('http://localhost:5000/api/bills/generate', formData);
             alert(response.data.message);
             fetchBills();
         } catch (error) {
-            alert("Error generating bill");
+            alert("❌ Error generating bill");
+            console.error(error);
         }
     };
 
@@ -90,8 +103,10 @@ function GenerateBill() {
                         type="number"
                         name="quantity"
                         placeholder="Quantity"
+                        value={formData.quantity}
                         onChange={handleChange}
                         required
+                        min="1"
                     />
                     <input
                         type="number"
@@ -120,7 +135,7 @@ function GenerateBill() {
                                 <th>Product Name</th>
                                 <th>Quantity</th>
                                 <th>Amount (₹)</th>
-                                <th className="total-amount-column">Total Amount (₹)</th>
+                                <th>Total Amount (₹)</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
@@ -130,7 +145,7 @@ function GenerateBill() {
                                     <td>{bill.productName}</td>
                                     <td>{bill.quantity}</td>
                                     <td>₹{bill.amount}</td>
-                                    <td className="total-amount-column">₹{bill.quantity * bill.amount}</td>
+                                    <td className="total-amount-column">₹{bill.totalAmount}</td>
                                     <td>{new Date(bill.date).toLocaleDateString()}</td>
                                 </tr>
                             ))}
