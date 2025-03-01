@@ -13,6 +13,8 @@ function GenerateBill() {
 
     const [bills, setBills] = useState([]);
     const [products, setProducts] = useState([]);
+    const [filteredProducts, setFilteredProducts] = useState([]);
+    const [showDropdown, setShowDropdown] = useState(false);
 
     useEffect(() => {
         fetchBills();
@@ -24,7 +26,7 @@ function GenerateBill() {
             const response = await axios.get('http://localhost:5000/api/bills');
             setBills(response.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
         } catch (error) {
-            console.error("❌ Error fetching bills:", error);
+            console.error("Error fetching bills:", error);
         }
     };
 
@@ -33,38 +35,52 @@ function GenerateBill() {
             const response = await axios.get('http://localhost:5000/api/products');
             setProducts(response.data);
         } catch (error) {
-            console.error("❌ Error fetching products:", error);
+            console.error("Error fetching products:", error);
         }
     };
 
-    const handleProductSelect = (e) => {
-        const selectedProduct = products.find(product => product.productName === e.target.value);
-        if (selectedProduct) {
-            setFormData(prevState => ({
-                ...prevState,
-                productName: selectedProduct.productName,
-                manufacturer: selectedProduct.manufacturer,
-                amount: selectedProduct.amount,
-                totalAmount: prevState.quantity * selectedProduct.amount
-            }));
+    const handleProductSearch = (e) => {
+        const value = e.target.value;
+        setFormData((prevState) => ({
+            ...prevState,
+            productName: value
+        }));
+
+        if (value.length > 0) {
+            const filtered = products.filter((product) =>
+                product.productName.toLowerCase().includes(value.toLowerCase())
+            );
+            setFilteredProducts(filtered);
+            setShowDropdown(true);
+        } else {
+            setShowDropdown(false);
         }
+    };
+
+    const handleProductSelect = (product) => {
+        setFormData({
+            ...formData,
+            productName: product.productName,
+            manufacturer: product.manufacturer,
+            amount: product.amount,
+            totalAmount: formData.quantity * product.amount
+        });
+        setShowDropdown(false);
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        let numericValue = name === "quantity" ? value.replace(/^0+/, '') : value; // Remove leading zeros
+        let numericValue = name === "quantity" ? value.replace(/^0+/, '') : value;
 
         if (name === "quantity" || name === "amount") {
-            numericValue = Number(numericValue) || ''; // Convert to number but keep empty string if invalid
+            numericValue = Number(numericValue) || '';
         }
 
         setFormData(prevState => {
             const updatedFormData = { ...prevState, [name]: numericValue };
-
             if (name === "quantity" || name === "amount") {
                 updatedFormData.totalAmount = (updatedFormData.quantity || 0) * (updatedFormData.amount || 0);
             }
-
             return updatedFormData;
         });
     };
@@ -73,12 +89,12 @@ function GenerateBill() {
         e.preventDefault();
 
         if (!formData.productName) {
-            alert("❌ Please select a product.");
+            alert("Please select a product.");
             return;
         }
 
         if (formData.quantity <= 0) {
-            alert("❌ Quantity must be greater than zero.");
+            alert("Quantity must be greater than zero.");
             return;
         }
 
@@ -87,7 +103,6 @@ function GenerateBill() {
             alert(response.data.message);
             fetchBills();
 
-            // Reset form fields
             setFormData({
                 productName: '',
                 manufacturer: '',
@@ -96,7 +111,7 @@ function GenerateBill() {
                 totalAmount: 0
             });
         } catch (error) {
-            alert("❌ Error generating bill");
+            alert("Error generating bill");
             console.error(error);
         }
     };
@@ -107,15 +122,27 @@ function GenerateBill() {
 
             <div className="form-container">
                 <form onSubmit={handleSubmit}>
-                    {/* Product Selection Dropdown */}
-                    <select name="productName" onChange={handleProductSelect} value={formData.productName} required>
-                        <option value="">Select Product</option>
-                        {products.map(product => (
-                            <option key={product._id} value={product.productName}>
-                                {product.productName}
-                            </option>
-                        ))}
-                    </select>
+                    {/* Searchable Product Input Field */}
+                    <div className="search-container">
+                        <input
+                            type="text"
+                            name="productName"
+                            placeholder="Search Product"
+                            value={formData.productName}
+                            onChange={handleProductSearch}
+                            required
+                            autoComplete="off"
+                        />
+                        {showDropdown && (
+                            <ul className="dropdown">
+                                {filteredProducts.map(product => (
+                                    <li key={product._id} onClick={() => handleProductSelect(product)}>
+                                        {product.productName}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
 
                     <input
                         type="number"
@@ -163,7 +190,7 @@ function GenerateBill() {
                                     <td>{bill.productName}</td>
                                     <td>{bill.quantity}</td>
                                     <td>₹{bill.amount}</td>
-                                    <td className="total-amount-column">₹{bill.totalAmount}</td>
+                                    <td>₹{bill.totalAmount}</td>
                                     <td>{new Date(bill.date).toLocaleDateString()}</td>
                                 </tr>
                             ))}

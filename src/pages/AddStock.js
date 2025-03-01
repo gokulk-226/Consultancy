@@ -52,8 +52,13 @@ function AddStock() {
     // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const { productName, manufacturer, quantity, date, amount } = formData;
+        if (!productName || !manufacturer || !date || quantity <= 0 || amount <= 0) {
+            alert("Please fill all details correctly.");
+            return;
+        }
         try {
-            const { productName, manufacturer, quantity, date, amount, totalAmount } = formData;
+            const { totalAmount } = formData;
             const requestData = { productName, manufacturer, quantity, date, amount, totalAmount };
 
             if (editingId) {
@@ -131,7 +136,7 @@ function AddStock() {
                         placeholder="Quantity" 
                         value={formData.quantity} 
                         onChange={handleChange} 
-                        min="0"
+                        min="1"
                         required
                     />
                     <input 
@@ -140,7 +145,7 @@ function AddStock() {
                         placeholder="Amount (₹)" 
                         value={formData.amount} 
                         onChange={handleChange} 
-                        min="0"
+                        min="1"
                         required
                     />
                     <input 
@@ -152,7 +157,7 @@ function AddStock() {
                         style={{ width: '120px' }}
                     />
 
-                    <button type="submit" disabled={!formData.productName || !formData.manufacturer || !formData.date}>
+                    <button type="submit">
                         {editingId ? 'Update Stock' : 'Add Stock'}
                     </button>
                 </form>

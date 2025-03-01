@@ -9,8 +9,8 @@ app.use(cors());
 mongoose.connect('mongodb://localhost:27017/inventoryDB', {
     useNewUrlParser: true,
     useUnifiedTopology: true
-}).then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.error("❌ MongoDB Connection Error:", err));
+}).then(() => console.log(" MongoDB Connected"))
+  .catch(err => console.error("MongoDB Connection Error:", err));
 
 // Product Schema
 const ProductSchema = new mongoose.Schema({
@@ -45,7 +45,7 @@ const PurchaseSchema = new mongoose.Schema({
 });
 const Purchase = mongoose.model('Purchase', PurchaseSchema);
 
-// 🟢 Add Stock (Always Creates a New Entry)
+// Add Stock (Always Creates a New Entry)
 app.post('/api/products/add', async (req, res) => {
     try {
         const { productName, manufacturer, quantity, date, amount } = req.body;
@@ -57,36 +57,36 @@ app.post('/api/products/add', async (req, res) => {
         const newPurchase = new Purchase({ productName, manufacturer, quantity, date, amount, totalAmount });
         await newPurchase.save();
 
-        res.status(201).json({ message: "✅ Stock Added Successfully!" });
+        res.status(201).json({ message: "Stock Added Successfully!" });
     } catch (error) {
-        console.error("❌ Error Adding Stock:", error);
-        res.status(500).json({ error: "❌ Error Adding Stock" });
+        console.error("Error Adding Stock:", error);
+        res.status(500).json({ error: "Error Adding Stock" });
     }
 });
 
-// 🟢 Get All Products
+// Get All Products
 app.get('/api/products', async (req, res) => {
     try {
         const products = await Product.find().sort({ date: -1 });
         res.json(products);
     } catch (error) {
-        console.error("❌ Error Fetching Products:", error);
-        res.status(500).json({ error: "❌ Error Fetching Products" });
+        console.error("Error Fetching Products:", error);
+        res.status(500).json({ error: "Error Fetching Products" });
     }
 });
 
-// 🟢 Get All Purchases
+// Get All Purchases
 app.get('/api/purchases', async (req, res) => {
     try {
         const purchases = await Purchase.find().sort({ date: -1 });
         res.json(purchases);
     } catch (error) {
-        console.error("❌ Error Fetching Purchases:", error);
-        res.status(500).json({ error: "❌ Error Fetching Purchases" });
+        console.error("Error Fetching Purchases:", error);
+        res.status(500).json({ error: "Error Fetching Purchases" });
     }
 });
 
-// 🟢 Update Product
+// Update Product
 app.put('/api/products/edit/:id', async (req, res) => {
     try {
         const { productName, manufacturer, quantity, date, amount } = req.body;
@@ -98,31 +98,31 @@ app.put('/api/products/edit/:id', async (req, res) => {
         );
 
         if (!updatedProduct) {
-            return res.status(404).json({ error: "❌ Product Not Found" });
+            return res.status(404).json({ error: "Product Not Found" });
         }
 
-        res.json({ message: "✅ Product Updated Successfully!", product: updatedProduct });
+        res.json({ message: "Product Updated Successfully!", product: updatedProduct });
     } catch (error) {
-        console.error("❌ Error Updating Product:", error);
-        res.status(500).json({ error: "❌ Error Updating Product" });
+        console.error("Error Updating Product:", error);
+        res.status(500).json({ error: "Error Updating Product" });
     }
 });
 
-// 🟢 Delete Product
+// Delete Product
 app.delete('/api/products/delete/:id', async (req, res) => {
     try {
         const deletedProduct = await Product.findByIdAndDelete(req.params.id);
         if (!deletedProduct) {
-            return res.status(404).json({ error: "❌ Product Not Found" });
+            return res.status(404).json({ error: "Product Not Found" });
         }
-        res.json({ message: "✅ Product Deleted Successfully!" });
+        res.json({ message: "Product Deleted Successfully!" });
     } catch (error) {
-        console.error("❌ Error Deleting Product:", error);
-        res.status(500).json({ error: "❌ Error Deleting Product" });
+        console.error("Error Deleting Product:", error);
+        res.status(500).json({ error: "Error Deleting Product" });
     }
 });
 
-// 🟢 Generate Bill & Reduce Stock
+// Generate Bill & Reduce Stock
 app.post('/api/bills/generate', async (req, res) => {
     try {
         const { productName, manufacturer, quantity, amount } = req.body;
@@ -130,7 +130,7 @@ app.post('/api/bills/generate', async (req, res) => {
         
         const product = await Product.findOne({ productName, manufacturer });
         if (!product || product.quantity < quantity) {
-            return res.status(400).json({ error: "❌ Insufficient Stock or Product Not Found" });
+            return res.status(400).json({ error: "Insufficient Stock or Product Not Found" });
         }
         
         product.quantity -= quantity;
@@ -140,25 +140,25 @@ app.post('/api/bills/generate', async (req, res) => {
         const newBill = new Bill({ productName, manufacturer, quantity, amount, totalAmount });
         await newBill.save();
 
-        res.json({ message: "✅ Bill Generated Successfully!" });
+        res.json({ message: "Bill Generated Successfully!" });
     } catch (error) {
-        console.error("❌ Error Generating Bill:", error);
-        res.status(500).json({ error: "❌ Error Generating Bill" });
+        console.error("Error Generating Bill:", error);
+        res.status(500).json({ error: "Error Generating Bill" });
     }
 });
 
-// 🟢 Get All Bills
+//  Get All Bills
 app.get('/api/bills', async (req, res) => {
     try {
         const bills = await Bill.find().sort({ date: -1 });
         res.json(bills);
     } catch (error) {
-        console.error("❌ Error Fetching Bills:", error);
-        res.status(500).json({ error: "❌ Error Fetching Bills" });
+        console.error("Error Fetching Bills:", error);
+        res.status(500).json({ error: "Error Fetching Bills" });
     }
 });
 
-// 🟢 Get Low Stock Products (<100)
+// Get Low Stock Products (<100)
 app.get('/api/products/low-stock', async (req, res) => {
     try {
         const products = await Product.find();
@@ -178,8 +178,8 @@ app.get('/api/products/low-stock', async (req, res) => {
 
         res.json(lowStockProducts);
     } catch (error) {
-        console.error("❌ Error Fetching Low Stock Data:", error);
-        res.status(500).json({ error: "❌ Error Fetching Low Stock Data" });
+        console.error("Error Fetching Low Stock Data:", error);
+        res.status(500).json({ error: "Error Fetching Low Stock Data" });
     }
 });
 

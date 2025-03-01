@@ -34,12 +34,15 @@
 .low-stock-thead {
     background: #333;
     color: #fff;
+    border-radius: 8px;
+    
 }
 
 .low-stock-thead tr th {
     padding: 10px;
     text-align: left;
     border-bottom: 2px solid #555;
+    
 }
 
 .low-stock-tbody tr td {
